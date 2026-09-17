@@ -1,0 +1,5 @@
+QUIC Version 1
+HTTP/3 connection established
+Connection ID: 1234567890
+UDP packet captured from client to server
+This sample demonstrates QUIC and HTTP/3 indicators.

@@ -1,0 +1,1 @@
+# Pure Python project: no third-party dependencies required.

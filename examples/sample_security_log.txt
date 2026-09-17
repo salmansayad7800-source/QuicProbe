@@ -1,0 +1,7 @@
+2026-09-16 10:00:00 failed login for admin from 10.0.0.7
+2026-09-16 10:00:02 failed login for admin from 10.0.0.7
+2026-09-16 10:00:04 failed login for admin from 10.0.0.7
+2026-09-16 10:00:05 successful login from 10.0.0.12
+2026-09-16 10:00:08 failed login for admin from 10.0.0.5
+2026-09-16 10:00:10 failed login for admin from 10.0.0.5
+2026-09-16 10:00:12 failed login for admin from 10.0.0.5

@@ -1,0 +1,6 @@
+key,value
+failed_login_attempts,6
+suspicious_ips,10.0.0.7; 10.0.0.5
+high_risk,True
+risk_level,high
+summary,Repeated failed login attempts detected.
