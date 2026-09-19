@@ -28,5 +28,8 @@ classifiers = [
 [project.scripts]
 quicprobe = "quicprobe.cli:main"
 
+[project.optional-dependencies]
+ml = ["scikit-learn>=1.4"]
+
 [tool.setuptools]
 packages = ["quicprobe", "quicprobe.core"]

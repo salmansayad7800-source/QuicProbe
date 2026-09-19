@@ -2,23 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>QuicProbe Report</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #f2f2f2; }
+        :root { color-scheme: dark; font-family: Segoe UI, Arial, sans-serif; }
+        body { margin: 0; background: #0b1120; color: #dbeafe; }
+        main { max-width: 1100px; margin: 0 auto; padding: 32px 20px; }
+        header { border-bottom: 1px solid #263449; padding-bottom: 24px; }
+        h1 { margin: 0 0 8px; color: #f8fafc; }
+        .summary { color: #a7b5c9; font-size: 1.05rem; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 24px 0; }
+        .metric { background: #111c31; border: 1px solid #263449; padding: 16px; }
+        .metric span { display: block; color: #8fa3bd; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; }
+        .metric strong { display: block; margin-top: 8px; color: #f8fafc; font-size: 1.35rem; }
+        .metric:first-child strong { color: #f87171; }
+        section { background: #111827; border: 1px solid #263449; padding: 20px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border-bottom: 1px solid #263449; padding: 12px; text-align: left; vertical-align: top; }
+        th { color: #93c5fd; width: 25%; }
+        td { color: #dbeafe; word-break: break-word; }
+        @media (max-width: 600px) { main { padding: 22px 12px; } th { width: 35%; } }
   </style>
 </head>
 <body>
-  <h1>QuicProbe Security Report</h1>
-  <table>
-    <tr><th>path</th><td>C:\Users\digt\Documents\Project.lungouge.programing\sample_quic_log.txt</td></tr>
-<tr><th>is_quic_likely</th><td>True</td></tr>
-<tr><th>score</th><td>9</td></tr>
-<tr><th>markers_found</th><td>[&#x27;QUIC&#x27;, &#x27;HTTP/3&#x27;, &#x27;Connection ID&#x27;, &#x27;Version 1&#x27;, &#x27;version 1&#x27;, &#x27;UDP&#x27;, &#x27;packet&#x27;]</td></tr>
-<tr><th>summary</th><td>QUIC-like indicators detected.</td></tr>
+    <main>
+        <header>
+    <h1>QuicProbe Security Report</h1>
+        <div class="summary">Capture metadata analyzed with statistical and optional ML heuristics; findings require investigation.</div>
+        </header>
+        <div class="metrics"><div class="metric"><span>Risk level</span><strong>HIGH</strong></div>
+<div class="metric"><span>Files scanned</span><strong>-</strong></div>
+<div class="metric"><span>QUIC files</span><strong>-</strong></div>
+<div class="metric"><span>Suspicious IPs</span><strong>0</strong></div></div>
+        <section>
+    <table>
+      <tr><th>path</th><td>C:\Users\digt\Documents\Project.lungouge.programing\reports\live_capture.pcap</td></tr>
+<tr><th>source_type</th><td>pcap</td></tr>
+<tr><th>capture_format</th><td>pcap</td></tr>
+<tr><th>packet_count</th><td>1130</td></tr>
+<tr><th>skipped_packets</th><td>10</td></tr>
+<tr><th>flow_count</th><td>61</td></tr>
+<tr><th>quic_candidate_flows</th><td>2</td></tr>
+<tr><th>possible_exfiltration_flows</th><td>0</td></tr>
+<tr><th>possible_c2_flows</th><td>0</td></tr>
+<tr><th>amplification_warnings</th><td>0</td></tr>
+<tr><th>downgrade_warnings</th><td>0</td></tr>
+<tr><th>cid_tracking_warnings</th><td>0</td></tr>
+<tr><th>checks</th><td>{&#x27;amplification&#x27;: True, &#x27;downgrade&#x27;: False, &#x27;connection_id_tracking&#x27;: True}</td></tr>
 <tr><th>risk_level</th><td>high</td></tr>
-  </table>
+<tr><th>decryption</th><td>not performed; QUIC/TLS payloads remain encrypted</td></tr>
+<tr><th>keylog</th><td>{&#x27;provided&#x27;: False, &#x27;entries&#x27;: 0, &#x27;decryption&#x27;: &#x27;not performed; no TLS key log supplied&#x27;}</td></tr>
+<tr><th>ml</th><td>{&#x27;available&#x27;: True, &#x27;model&#x27;: &#x27;IsolationForest&#x27;, &#x27;anomalies&#x27;: np.int64(14), &#x27;message&#x27;: &#x27;Unsupervised anomaly scores added to flows.&#x27;}</td></tr>
+<tr><th>summary</th><td>Capture metadata analyzed with statistical and optional ML heuristics; findings require investigation.</td></tr>
+<tr><th>capture</th><td>{&#x27;path&#x27;: &#x27;C:\\Users\\digt\\Documents\\Project.lungouge.programing\\reports\\live_capture.pcap&#x27;, &#x27;interface&#x27;: &#x27;10.71.203.19&#x27;, &#x27;duration_seconds&#x27;: 20.085, &#x27;packets_captured&#x27;: 1140, &#x27;format&#x27;: &#x27;pcap&#x27;}</td></tr>
+    </table>
+        </section>
+    </main>
 </body>
 </html>

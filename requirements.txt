@@ -1,1 +1,2 @@
-# Pure Python project: no third-party dependencies required.
+# Optional machine-learning support for: python -m quicprobe pcap --ml
+scikit-learn>=1.4

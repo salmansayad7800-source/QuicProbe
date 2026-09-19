@@ -6,3 +6,4 @@ __pycache__/
 .DS_Store
 reports/*.json
 reports/demo.*
+reports/*.pcap

@@ -3,7 +3,10 @@ import json
 import os
 import re
 from html import escape
+from html.parser import HTMLParser
 from typing import Dict, List
+from urllib.parse import urljoin, urlparse
+from urllib.request import Request, urlopen
 
 
 QUIC_MARKERS = {
@@ -78,6 +81,110 @@ def _detected_protocols(lowered_text: str) -> List[str]:
 
 def _normalize_path(path: str) -> str:
     return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
+
+
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def _offline_url_info(url: str, reason: str) -> Dict[str, object]:
+    parsed = urlparse(url)
+    default_port = 443 if parsed.scheme == "https" else 80
+    port = parsed.port or default_port
+    return {
+        "url": url,
+        "source_type": "web",
+        "network_available": False,
+        "offline_inspection": True,
+        "offline_reason": reason,
+        "scheme": parsed.scheme,
+        "hostname": parsed.hostname or "",
+        "port": port,
+        "path": parsed.path or "/",
+        "has_query": bool(parsed.query),
+        "has_fragment": bool(parsed.fragment),
+        "is_https": parsed.scheme == "https",
+        "http3_advertised": False,
+        "transport_protocol": "unknown (offline)",
+        "external_links": [],
+        "external_link_count": 0,
+        "is_quic_likely": False,
+        "score": 0,
+        "markers_found": [],
+        "protocols": [],
+        "summary": "URL structure inspected locally; network protocol was not verified.",
+    }
+
+
+class _WebPageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.text_parts: List[str] = []
+        self.hrefs: List[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.text_parts.append(data)
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag.lower() != "a":
+            return
+        href = dict(attrs).get("href")
+        if href:
+            self.hrefs.append(href)
+
+
+def scan_url(url: str, timeout: int = 10) -> Dict[str, object]:
+    if not _is_http_url(url):
+        raise ValueError("Only valid http:// or https:// URLs are supported.")
+
+    request = Request(url, headers={"User-Agent": "QuicProbe/0.1"})
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            raw_content = response.read()
+            charset = response.headers.get_content_charset() or "utf-8"
+            final_url = response.geturl()
+            http_version_number = getattr(response, "version", None)
+            alt_svc_values = response.headers.get_all("Alt-Svc", [])
+    except OSError as exc:
+        return _offline_url_info(url, str(exc))
+
+    page = raw_content.decode(charset, errors="replace")
+    parser = _WebPageParser()
+    parser.feed(page)
+    alt_svc = ", ".join(alt_svc_values)
+    http3_advertised = bool(re.search(r"(?:^|[,;\s])h3(?:[-=\";,\s]|$)", alt_svc, re.IGNORECASE))
+    protocol_evidence = "\n".join(
+        marker for marker, present in (("HTTP/3", http3_advertised), ("QUIC", http3_advertised)) if present
+    )
+    page_result = scan_text("\n".join(parser.text_parts) + "\n" + protocol_evidence)
+    http_versions = {10: "1.0", 11: "1.1", 20: "2"}
+    http_version = http_versions.get(http_version_number, "unknown")
+    transport_protocol = "QUIC/HTTP3" if http3_advertised else f"HTTP/{http_version}"
+    base_host = urlparse(final_url).netloc.lower()
+    external_links = []
+    seen_links = set()
+    for href in parser.hrefs:
+        absolute_url = urljoin(final_url, href).split("#", 1)[0]
+        parsed = urlparse(absolute_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            continue
+        if parsed.netloc.lower() == base_host or absolute_url in seen_links:
+            continue
+        seen_links.add(absolute_url)
+        external_links.append(absolute_url)
+
+    return {
+        "url": final_url,
+        "source_type": "web",
+        **page_result,
+        "http_version": http_version,
+        "alt_svc": alt_svc,
+        "http3_advertised": http3_advertised,
+        "transport_protocol": transport_protocol,
+        "external_links": external_links,
+        "external_link_count": len(external_links),
+    }
 
 
 def classify_risk(
@@ -213,6 +320,11 @@ def analyze_security_log(text: str) -> Dict[str, object]:
 
 
 def analyze_path(path: str) -> Dict[str, object]:
+    if _is_http_url(path):
+        result = scan_url(path)
+        result["risk_level"] = classify_risk(result.get("score", 0), 0, [])
+        return result
+
     resolved_path = _normalize_path(path)
 
     if os.path.isdir(resolved_path):
@@ -254,6 +366,7 @@ def analyze_paths(paths: List[str]) -> Dict[str, object]:
     files_scanned = 0
     quic_files = 0
     quic_score = 0
+    external_links = set()
 
     def collect_suspicious_ips_for_path(target_path: str):
         resolved = _normalize_path(target_path)
@@ -283,6 +396,7 @@ def analyze_paths(paths: List[str]) -> Dict[str, object]:
         combined_results.append(result)
         if result.get("is_quic_likely"):
             overall_quic = True
+        external_links.update(result.get("external_links", []))
 
         if isinstance(result.get("results"), list):
             files_scanned += len(result["results"])
@@ -291,7 +405,7 @@ def analyze_paths(paths: List[str]) -> Dict[str, object]:
             for item in result["results"]:
                 if item.get("is_quic_likely"):
                     overall_quic = True
-        elif result.get("path"):
+        elif result.get("path") or result.get("url"):
             files_scanned += 1
             quic_score += result.get("score", 0)
             if result.get("is_quic_likely"):
@@ -311,6 +425,8 @@ def analyze_paths(paths: List[str]) -> Dict[str, object]:
         "quic_score": quic_score,
         "files_scanned": files_scanned,
         "quic_files": quic_files,
+        "external_links": sorted(external_links),
+        "external_link_count": len(external_links),
         "risk_level": classify_risk(quic_score, 0, list(suspicious_ips)),
         "suspicious_ips": sorted(suspicious_ips),
         "results": combined_results,
