@@ -54,6 +54,75 @@ def _json_dump(data, **kwargs) -> str:
     return json.dumps(data, default=_json_default, **kwargs)
 
 
+def _format_doctor_report(result: dict) -> str:
+    interfaces = result.get("interfaces", []) or []
+    grouped = {
+        "Ethernet": 0,
+        "Wireless": 0,
+        "Tunnel": 0,
+        "PPP": 0,
+        "Loopback": 0,
+    }
+
+    def classify_interface_name(name: str) -> str:
+        normalized = str(name).lower()
+        if normalized.startswith(("eth", "en", "eno", "ens", "em", "lan")):
+            return "Ethernet"
+        if normalized.startswith(("wlan", "wifi", "wl", "wlp", "wireless")):
+            return "Wireless"
+        if normalized.startswith(("tun", "tap", "wg", "wireguard", "gtun")):
+            return "Tunnel"
+        if normalized.startswith(("ppp", "pppoe")):
+            return "PPP"
+        if normalized.startswith(("lo", "loopback")):
+            return "Loopback"
+        return "Ethernet" if "eth" in normalized else "Wireless" if "wifi" in normalized or "wlan" in normalized else "Tunnel" if "tun" in normalized else "PPP" if "ppp" in normalized else "Loopback" if "lo" in normalized else "Ethernet"
+
+    for item in interfaces:
+        name = str(item.get("name", ""))
+        label = classify_interface_name(name)
+        grouped[label] = grouped.get(label, 0) + 1
+
+    health_rows = [
+        ("Administrator", "YES" if result.get("administrator") else "NO"),
+        ("Raw Sockets", "YES" if result.get("raw_socket_supported") else "NO"),
+        ("scikit-learn", "YES" if result.get("scikit_learn", {}).get("available") else "NO"),
+        ("Total Interfaces", str(len(interfaces))),
+        ("System Ready", "YES" if result.get("ready_for_live_capture") else "NO"),
+    ]
+
+    health_labels = [label for label, _ in health_rows]
+    health_values = [value for _, value in health_rows]
+    health_label_width = max(len(label) for label in health_labels)
+    health_value_width = max(len(value) for value in health_values)
+    health_border = "+-" + "-" * (health_label_width + 2) + "-+-" + "-" * (health_value_width + 2) + "-+"
+
+    def render_table(rows, label_name, value_name):
+        labels = [label for label, _ in rows]
+        values = [value for _, value in rows]
+        label_width = max(len(label_name), max(len(label) for label in labels))
+        value_width = max(len(value_name), max(len(value) for value in values))
+        border = "+-" + "-" * (label_width + 2) + "-+-" + "-" * (value_width + 2) + "-+"
+        lines = [border, f"| {label_name:<{label_width}} | {value_name:^{value_width}} |", border]
+        for label, value in rows:
+            lines.append(f"| {label:<{label_width}} | {value:>{value_width}} |")
+        lines.append(border)
+        return "\n".join(lines)
+
+    health_table = render_table(health_rows, "System Health", "Value")
+
+    summary_rows = [
+        ("Ethernet", str(grouped.get("Ethernet", 0))),
+        ("Wireless", str(grouped.get("Wireless", 0))),
+        ("Tunnel", str(grouped.get("Tunnel", 0))),
+        ("PPP", str(grouped.get("PPP", 0))),
+        ("Loopback", str(grouped.get("Loopback", 0))),
+    ]
+    summary_table = render_table(summary_rows, "Interface Type", "Count")
+
+    return "\n".join([health_table, "", summary_table])
+
+
 def _print_pcap_summary(result) -> None:
     print("\nPCAP SECURITY SUMMARY")
     print("=" * 72)
@@ -323,13 +392,7 @@ def main(argv=None) -> int:
 
     if args.command == "doctor":
         result = environment_doctor()
-        print(_json_dump(result, indent=2, ensure_ascii=False) if args.json else "\n".join([
-            f"Administrator: {'YES' if result['administrator'] else 'NO'}",
-            f"Raw sockets: {'YES' if result['raw_socket_supported'] else 'NO'}",
-            f"scikit-learn: {'YES' if result['scikit_learn']['available'] else 'NO'}",
-            "Interfaces: " + ", ".join(item["name"] for item in result["interfaces"]),
-            f"Ready: {'YES' if result['ready_for_live_capture'] else 'NO'}",
-        ]))
+        print(_json_dump(result, indent=2, ensure_ascii=False) if args.json else _format_doctor_report(result))
         return 0 if result["ready_for_live_capture"] else 2
 
     if args.command == "ml-train":

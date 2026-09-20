@@ -20,7 +20,7 @@ from quicprobe.core.analyzer import (
 )
 from quicprobe.core.pcap_analyzer import _calculate_risk_level, analyze_pcap
 from quicprobe.core.live_capture import capture_to_pcap
-from quicprobe.cli import _json_dump
+from quicprobe.cli import _format_doctor_report, _json_dump
 
 
 class QuicProbeAnalyzerTests(unittest.TestCase):
@@ -110,6 +110,40 @@ class QuicProbeAnalyzerTests(unittest.TestCase):
         self.assertIn('"score": 0.75', result)
         self.assertIn('"enabled": true', result)
         self.assertIn('"values": [1, 2, 3]', result)
+
+    def test_format_doctor_report_uses_ascii_tables_and_grouped_interfaces(self):
+        result = {
+            "administrator": True,
+            "raw_socket_supported": True,
+            "scikit_learn": {"available": True, "version": "1.9.1"},
+            "interfaces": [
+                {"name": "Ethernet0"},
+                {"name": "Wi-Fi"},
+                {"name": "eth1"},
+                {"name": "tun0"},
+                {"name": "ppp0"},
+                {"name": "lo"},
+            ],
+            "ready_for_live_capture": True,
+        }
+
+        report = _format_doctor_report(result)
+
+        self.assertIn("System Health", report)
+        self.assertIn("Administrator", report)
+        self.assertIn("Raw Sockets", report)
+        self.assertIn("scikit-learn", report)
+        self.assertIn("Total Interfaces", report)
+        self.assertIn("System Ready", report)
+        self.assertIn("Interface Type", report)
+        self.assertIn("| Ethernet", report)
+        self.assertIn("| Wireless", report)
+        self.assertIn("| Tunnel", report)
+        self.assertIn("| PPP", report)
+        self.assertIn("| Loopback", report)
+        self.assertIn("+", report)
+        self.assertIn("Total Interfaces", report)
+        self.assertIn("6", report)
 
     def test_analyze_pcap_reads_udp_flow_metadata(self):
         ethernet = b"\x00" * 12 + struct.pack("!H", 0x0800)
